@@ -1,5 +1,5 @@
 # LabelStoma
-LabelStoma is a graphical image tool for automatically detecting stomata in images. In addition, LabelStoma also provides the necessary tools to correct the detections. LabelStoma is based on the [LabelImg tool](https://github.com/tzutalin/labelImg). A summary of the files included in this repository is provided in the following [document](https://docs.google.com/document/d/1CMV7xhy1Ko9hL__JhLgT3AgbzyyGs5yT3rTp_y7fjJQ/edit?usp=sharing).
+LabelStoma is a graphical image tool for automatically detecting stomata in images. In addition, LabelStoma also provides the necessary tools to correct the detections. LabelStoma is based on the [LabelImg tool](https://github.com/tzutalin/labelImg). A summary of the files included in this repository is provided in the [Directory Structure](#directory-structure) section.
 
 ![TestTimeAugmentation](image/labelStoma.png)
 
@@ -10,7 +10,8 @@ LabelStoma is a graphical image tool for automatically detecting stomata in imag
 1. [Datasets and Weights](#datasets-and-weights)
 2. [Jupyter Notebook](#jupyter-notebook)
 3. [Hotkeys](#hotkeys)
-4. [Acknowledgements](#Acknowledgements)
+4. [Directory Structure](#directory-structure)
+5. [Acknowledgements](#Acknowledgements)
 
 
 ## Installation and Requirements
@@ -114,6 +115,30 @@ LabelStoma allows the creation of stoma detection models based on the YOLO detec
 | w        | Create a new surface detection |
 | l        | Create a new scale detection   |
 | del      | Delete the selected rect box   |
+
+
+## Directory Structure
+
+### Files
+
+* `CONTRIBUTING.rst`: File that contains the authors of the library. 
+* `LICENSE`: Licence file. 
+* `Makefile`: file to compile LabelStoma if it is installed by cloning the repository. 
+* `MANIFIEST.in`: File for configuring the construction of the pip package.
+* `detectStoma.py`: File that is employed to detect the stomata from images of a given folder and save the result as XML files following the Pascal VOC format. 
+* `generateExcel.py`: File that is used to generate an excel file with the detected stomata.
+* `labelStoma.py`: Main application file
+* `requirements.txt`: File with the dependencies required to install and run LabelStoma. 
+* `resources.qrc`: Resources file that is employed by pyqt5 applications to manage resources like icons. 
+* `selectPesos.py`: file that provides the window for asking the users whether they want to use the by default weights or use a different set of weights. 
+
+### Folders
+
+* `fichs`: In this folder we store the configuration files for the YOLO model (vocEstomas.names and yolov3Estomas.cfg). The YOLO weights are automatically downloaded the first time that LabelStoma is run. 
+* `image`: This folder contains an image that we use in the readme.
+* `libs`: Files for the graphical interface of LabelStoma. 
+* `notebooks`: In this folder, we store the code for generating the YOLO notebooks to retrain the stomata detection model.
+* `resources`: here we see two folders on the one hand we have the icons folder where we find the icons used in the application and on the other hand the string folder where the icons are related to the application.
 
 
 ## Acknowledgements
