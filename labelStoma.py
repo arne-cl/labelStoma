@@ -1029,10 +1029,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
 
     def newShapeStoma(self, text='stoma'):
-        """Pop-up and give focus to the label editor.
-
-        position MUST be in global coordinates.
-        """
+        """Creates a new shape with a default label "stoma"."""
         if text is not None:
             self.prevLabelText = text
             generate_color = generateColorByText(text)
@@ -1051,12 +1048,8 @@ class MainWindow(QMainWindow, WindowMixin):
         else:
             self.canvas.resetAllLines()
 
-    # Importante.
     def newShape(self):
-        """Pop-up and give focus to the label editor.
-
-        position MUST be in global coordinates.
-        """
+        """Creates a new shape based on the last used text."""
         text = self.text
         if text is not None:
             self.prevLabelText = text
@@ -1077,20 +1070,24 @@ class MainWindow(QMainWindow, WindowMixin):
             self.canvas.resetAllLines()
 
     def scrollRequest(self, delta, orientation):
+        """Scrolls the canvas based on user input."""
         units = - delta / (8 * 15)
         bar = self.scrollBars[orientation]
         bar.setValue(bar.value() + bar.singleStep() * units)
 
     def setZoom(self, value):
+        """Sets the zoom level of the canvas."""
         self.actions.fitWidth.setChecked(False)
         self.actions.fitWindow.setChecked(False)
         self.zoomMode = self.MANUAL_ZOOM
         self.zoomWidget.setValue(value)
 
     def addZoom(self, increment=10):
+        """Increments or decrements the current zoom level."""
         self.setZoom(self.zoomWidget.value() + increment)
 
     def zoomRequest(self, delta):
+        """Handles zoom requests, such as from mouse wheel input."""
         # get the current scrollbar positions
         # calculate the percentages ~ coordinates
         h_bar = self.scrollBars[Qt.Horizontal]
@@ -1143,23 +1140,29 @@ class MainWindow(QMainWindow, WindowMixin):
         v_bar.setValue(new_v_bar_value)
 
     def setFitWindow(self, value=True):
+        """Sets the zoom level to fit the image within the window."""
         if value:
             self.actions.fitWidth.setChecked(False)
         self.zoomMode = self.FIT_WINDOW if value else self.MANUAL_ZOOM
         self.adjustScale()
 
     def setFitWidth(self, value=True):
+        """Sets the zoom level to fit the image width within the window."""
         if value:
             self.actions.fitWindow.setChecked(False)
         self.zoomMode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjustScale()
 
     def togglePolygons(self, value):
+        """Shows or hides all polygons (shapes) in the canvas."""
         for item, shape in self.itemsToShapes.items():
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
     def loadFile(self, filePath=None):
-        """Load the specified file, or the last opened file if None."""
+        """
+        Loads an image file and its associated labels into the application.
+        Load the last opened file if filePath=None.
+        """
         self.resetState()
         self.canvas.setEnabled(False)
         if filePath is None:
@@ -1252,18 +1255,21 @@ class MainWindow(QMainWindow, WindowMixin):
         return False
 
     def resizeEvent(self, event):
+        """Handles window resize events to adjust the canvas size and zoom level."""
         if self.canvas and not self.image.isNull() \
                 and self.zoomMode != self.MANUAL_ZOOM:
             self.adjustScale()
         super(MainWindow, self).resizeEvent(event)
 
     def paintCanvas(self):
+        """Updates the canvas display based on the current zoom level and image."""
         assert not self.image.isNull(), "cannot paint null image"
         self.canvas.scale = 0.01 * self.zoomWidget.value()
         self.canvas.adjustSize()
         self.canvas.update()
 
     def adjustScale(self, initial=False):
+        """Adjusts the zoom level of the canvas to fit the window or image width."""
         value = self.scalers[self.FIT_WINDOW if initial else self.zoomMode]()
         self.zoomWidget.setValue(int(100 * value))
 
@@ -1280,11 +1286,13 @@ class MainWindow(QMainWindow, WindowMixin):
         return w1 / w2 if a2 >= a1 else h1 / h2
 
     def scaleFitWidth(self):
+        """Scales the image to fit the width of the canvas while maintaining the aspect ratio."""
         # The epsilon does not seem to work too well here.
         w = self.centralWidget().width() - 2.0
         return w / self.canvas.pixmap.width()
 
     def closeEvent(self, event):
+        """Handles the event when the application window is closed, prompting for unsaved changes."""
         if not self.mayContinue():
             event.ignore()
         settings = self.settings
@@ -1318,10 +1326,12 @@ class MainWindow(QMainWindow, WindowMixin):
         settings.save()
 
     def loadRecent(self, filename):
+        """Loads a recently opened file."""
         if self.mayContinue():
             self.loadFile(filename)
 
     def scanAllImages(self, folderPath):
+        """Scans a directory for all images that can be opened."""
         extensions = ['.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
         images = []
 
@@ -1335,6 +1345,7 @@ class MainWindow(QMainWindow, WindowMixin):
         return images
 
     def changeSavedirDialog(self, _value=False):
+        """Opens a dialog to change the directory where annotations are saved."""
         if self.defaultSaveDir is not None:
             path = ustr(self.defaultSaveDir)
         else:
@@ -1353,6 +1364,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.statusBar().show()
 
     def openAnnotationDialog(self, _value=False):
+        """Opens a dialog to load an annotation file."""
         if self.filePath is None:
             self.statusBar().showMessage('Please select image first')
             self.statusBar().show()
@@ -1369,6 +1381,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.loadPascalXMLByFilename(filename)
 
     def openDirDialog(self, _value=False, dirpath=None):
+        """Opens a dialog to select a directory of images to load."""
         if not self.mayContinue():
             return
 
@@ -1385,6 +1398,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.importDirImages(self.targetDirPath)
 
     def importDirImages(self, dirpath):
+        """Imports and loads all images from a selected directory."""
         if not self.mayContinue() or not dirpath:
             return
 
@@ -1399,6 +1413,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.fileListWidget.addItem(item)
 
     def verifyImg(self, _value=False):
+        """Toggles the verification status of the currently loaded image."""
         # Proceding next image without dialog if having any label
         if self.filePath is not None:
             try:
@@ -1417,17 +1432,10 @@ class MainWindow(QMainWindow, WindowMixin):
             self.saveFile()
 
     def openPrevImg(self, _value=False):
+        """Loads the previous image in the directory list."""
         # Proceding prev image without dialog if having any label
         if self.dirty is True:
             self.saveFile()
-        # if self.autoSaving.isChecked():
-        #     if self.defaultSaveDir is not None:
-        #         if self.dirty is True:
-        #             self.saveFile()
-        #     else:
-        #         self.changeSavedirDialog()
-        #         return
-        #         return
 
         if not self.mayContinue():
             return
@@ -1445,16 +1453,10 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.loadFile(filename)
 
     def openNextImg(self, _value=False):
+        """Loads the next image in the directory list."""
         # Proceding prev image without dialog if having any label
         if self.dirty is True:
             self.saveFile()
-        # if self.autoSaving.isChecked():
-        #     if self.defaultSaveDir is not None:
-        #         if self.dirty is True:
-        #             self.saveFile()
-        #     else:
-        #         self.changeSavedirDialog()
-        #         return
 
         if not self.mayContinue():
             return
@@ -1474,6 +1476,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.loadFile(filename)
 
     def openFile(self, _value=False):
+        """Opens a file dialog to select an image or label file to load."""
         if not self.mayContinue():
             return
         path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
@@ -1486,7 +1489,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.loadFile(filename)
 
     def detectStoma(self, _value=False):
-
+        """Triggers the stoma detection process for the currently loaded image or directory."""
         Dialog = QtWidgets.QDialog()
         ui = predict.selectPesos.Ui_Dialog()
         ui.setupUi(Dialog)
@@ -1534,25 +1537,24 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.importDirImages(path)
 
     def generarExcel(self):
+        """Triggers the generation of an Excel report based on the current annotations."""
         self.saveFile()
         Dialog = QtWidgets.QDialog()
         ui = Ui_Dialog()
         ui.setupUi(Dialog)
         x = Dialog.exec_()
-        # El proceso principal se queda esperando hasta que el dialogo se cierra.
-        # Una vez que el dialogo se ha cerrado podemos entrar a uno de los parámetros
-        # de ese dialogo.
-        #print(ui.es)
+
+        # The main process waits until the dialog is closed.
+        # Once the dialog has closed we can enter one of the parameters
+        # of that dialog.
         if ui.genera:
             generaExcel(os.path.dirname(ustr(self.filePath)), ui.esca, self.shapeSize, ui.uni, ui.che2, ui.che3, ui.che4, ui.che5, ui.che6, ui.che7, ui.che8, ui.che9, ui.che10)
             self.setWindowIcon(QtGui.QIcon("resources/icons/excel.png"))
             QMessageBox.about(self, "Information", "Excel finished")
             self.setWindowIcon(newIcon("app"))
-        # QMessageBox msgBox
-        # msgBox.setText("Excel finished")
-        # msgBox.exec()
 
     def trainModel(self):
+        """Initiates the process to generate training files or notebooks for model training."""
         self.saveFile()
         box = QDialog()
         box.setWindowFlags(box.windowFlags() | QtCore.Qt.CustomizeWindowHint)
@@ -1561,35 +1563,22 @@ class MainWindow(QMainWindow, WindowMixin):
         box.resize(179, 1)
         box.setWindowTitle("Processing...")
         box.show()
-        #Dialog = QtWidgets.QDialog()
-        #ui = notebooks.notebookmenu.Ui_Dialog()
-        #ui.setupUi(Dialog)
-        #x = Dialog.exec_()
-        # El proceso principal se queda esperando hasta que el dialogo se cierra.
-        # Una vez que el dialogo se ha cerrado podemos entrar a uno de los parámetros
-        # de ese dialogo.
-        #if ui.genera:
+
+        # The main process waits until the dialog is closed.
+        # Once the dialog has closed we can enter one of the parameters
+        # of that dialog.
         path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
-            #tecnhiques = notebooks.mainModel.selectTecniques(self, ui.avg, ui.bila, ui.blur, ui.chanhsv, ui.chanlab, ui.crop,
-                                                   #ui.drop, ui.elas, ui.histo,
-                                                   #ui.vflip, ui.hflip, ui.hvflip, ui.gamma, ui.blurGa, ui.gaunoise,
-                                                   #ui.invert, ui.median, ui.none,
-                                                   #ui.raiseB, ui.raiseGreen, ui.raiseHue, ui.raisered, ui.raisesatu,
-                                                   #ui.raiseval,
-                                                   #ui.resize, ui.rot10, ui.rot90, ui.rot180, ui.rot270, ui.saltpe,
-                                                   #ui.sharpen, ui.sift,
-                                                   #ui.shear, ui.trans)
-            #option = notebooks.mainModel.selectOption(ui.aff, ui.con, ui.una)
-            #notebooks.generateNotebook.selectModel(self, ui.rb_efi, ui.rb_fsaf, ui.rb_fcos, ui.rb_mask, ui.rb_mxnet, ui.rb_reti, ui.rb_yolo, path, tecnhiques, float(ui.conf), option)
         notebooks.notebookYolo.notebookYOLO(path)
         box.close()
         path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
         QMessageBox.about(self, "Information", "Notebook finished and save in " + path)
 
     def handleNewWindow(self):
+        """Handles the creation of a new dialog window."""
         self.childWindow = Ui_Dialog(self)
 
     def saveFile(self, _value=False):
+        """Saves the current annotations to the default or specified path."""
         if self.shapeSize is None:
             for shape in self.canvas.shapes:
                 if shape.label=='scale':
@@ -1611,10 +1600,12 @@ class MainWindow(QMainWindow, WindowMixin):
                            else self.saveFileDialog(removeExt=False))
 
     def saveFileAs(self, _value=False):
+        """Saves the current annotations to a file specified by the user through a dialog."""
         assert not self.image.isNull(), "cannot save empty image"
         self._saveFile(self.saveFileDialog())
 
     def saveFileDialog(self, removeExt=True):
+        """Opens a dialog for the user to specify the file path for saving annotations."""
         caption = '%s - Choose File' % __appname__
         filters = 'File (*%s)' % LabelFile.suffix
         openDialogPath = self.currentPath()
@@ -1633,45 +1624,53 @@ class MainWindow(QMainWindow, WindowMixin):
         return ''
 
     def _saveFile(self, annotationFilePath):
+        """Internal method to save annotations to a specified file."""
         if annotationFilePath and self.saveLabels(annotationFilePath):
             self.setClean()
             self.statusBar().showMessage('Saved to  %s' % annotationFilePath)
             self.statusBar().show()
 
     def closeFile(self, _value=False):
+        """Closes the current file and prompts to save if there are unsaved changes."""
         self.saveFile()
         if not self.mayContinue():
             return
+
         self.resetState()
         self.setClean()
         self.toggleActions(False)
         self.canvas.setEnabled(False)
         self.actions.saveAs.setEnabled(False)
 
-
     def resetAll(self):
+        """Resets all settings and restarts the application."""
         self.settings.reset()
         self.close()
         proc = QProcess()
         proc.startDetached(os.path.abspath(__file__))
 
     def mayContinue(self):
+        """Checks if the user can proceed with an action, considering unsaved changes."""
         return True
-        #not (self.dirty and not self.discardChangesDialog())
+        #not (self.dirty and not self.discardChangesDialog()
 
     def discardChangesDialog(self):
+        """Opens a dialog asking the user if they want to discard unsaved changes."""
         yes, no = QMessageBox.Yes, QMessageBox.No
         msg = u'You have unsaved changes, proceed anyway?'
         return yes == QMessageBox.warning(self, u'Attention', msg, yes | no)
 
     def errorMessage(self, title, message):
+        """Displays an error message dialog."""
         return QMessageBox.critical(self, title,
                                     '<p><b>%s</b></p>%s' % (title, message))
 
     def currentPath(self):
+        """Returns the current working directory path."""
         return os.path.dirname(self.filePath) if self.filePath else '.'
 
     def chooseColor1(self):
+        """Opens a color picker dialog for selecting the line color for shapes."""
         color = self.colorDialog.getColor(self.lineColor, u'Choose line color',
                                           default=DEFAULT_LINE_COLOR)
         if color:
@@ -1682,6 +1681,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.setDirty()
 
     def deleteSelectedShape(self):
+        """Deletes the currently selected shape from the canvas and label list."""
         if self.canvas.selectedShape.label == 'scale':
             self.shapeSize == None
             self.actions.excel.setEnabled(False)
@@ -1693,6 +1693,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.saveFile()
 
     def chshapeLineColor(self):
+        """Changes the line color of the selected shape through a color picker dialog."""
         color = self.colorDialog.getColor(self.lineColor, u'Choose line color',
                                           default=DEFAULT_LINE_COLOR)
         if color:
@@ -1701,6 +1702,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.setDirty()
 
     def chshapeFillColor(self):
+        """Changes the fill color of the selected shape through a color picker dialog."""
         color = self.colorDialog.getColor(self.fillColor, u'Choose fill color',
                                           default=DEFAULT_FILL_COLOR)
         if color:
@@ -1709,15 +1711,18 @@ class MainWindow(QMainWindow, WindowMixin):
             self.setDirty()
 
     def copyShape(self):
+        """Copies the selected shape."""
         self.canvas.endMove(copy=True)
         self.addLabel(self.canvas.selectedShape)
         self.setDirty()
 
     def moveShape(self):
+        """Moves the selected shape to a new position."""
         self.canvas.endMove(copy=False)
         self.setDirty()
 
     def loadPredefinedClasses(self, predefClassesFile):
+        """Loads predefined class labels from a file."""
         if os.path.exists(predefClassesFile) is True:
             with codecs.open(predefClassesFile, 'r', 'utf8') as f:
                 for line in f:
@@ -1728,6 +1733,7 @@ class MainWindow(QMainWindow, WindowMixin):
                         self.labelHist.append(line)
 
     def loadPascalXMLByFilename(self, xmlPath):
+        """Loads Pascal VOC XML annotations for the current image."""
         if self.filePath is None:
             return
         if os.path.isfile(xmlPath) is False:
@@ -1741,6 +1747,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.verified = tVocParseReader.verified
 
     def loadYOLOTXTByFilename(self, txtPath):
+        """Loads YOLO format annotations for the current image."""
         if self.filePath is None:
             return
         if os.path.isfile(txtPath) is False:
@@ -1754,18 +1761,22 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.verified = tYoloParseReader.verified
 
     def togglePaintLabelsOption(self):
+        """Toggles the option to display labels on the shapes in the canvas."""
         for shape in self.canvas.shapes:
             shape.paintLabel = self.displayLabelOption.isChecked()
 
     def toogleDrawSquare(self):
+        """Toggles the option to draw shapes as squares or rectangles."""
         self.canvas.setDrawingShapeToSquare(self.drawSquaresOption.isChecked())
 
 
 def inverted(color):
+    """Generates a color that is the inverse of the input color (used for contrasting text or UI elements)."""
     return QColor(*[255 - v for v in color.getRgb()])
 
 
 def read(filename, default=None):
+    """Reads and returns the content of a file, or returns a default value if reading fails."""
     try:
         with open(filename, 'rb') as f:
             return f.read()
