@@ -35,18 +35,11 @@ def getOutputsNames(net):
     return [layersNames[i - 1] for i in outLayers]
 
 
-
-
-# Remove the bounding boxes with low confidence using non-maxima suppression
 def postprocess(frame, outs, conf):
+    """Remove the bounding boxes with low confidence using non-maxima suppression."""
     frameHeight = frame.shape[0]
     frameWidth = frame.shape[1]
 
-    classIds = []
-    confidences = []
-    boxes = []
-    # Scan through all the bounding boxes output from the network and keep only the
-    # ones with high confidence scores. Assign the box's class label as the class with the highest score.
     classIds = []
     confidences = []
     boxes = []
@@ -66,22 +59,20 @@ def postprocess(frame, outs, conf):
                 confidences.append(float(confidence))
                 boxes.append([left, top, width, height])
 
-    # Perform non maximum suppression to eliminate redundant overlapping boxes with
-    # lower confidences.
-    newBoxes=[]
-    newConfi = []
     indices = cv.dnn.NMSBoxes(boxes, confidences, conf, nmsThreshold)
+
+    # Check the type of indices and adapt accordingly
+    if isinstance(indices, list):  # For older OpenCV versions
+        indices = [i for i in indices]
+    elif isinstance(indices, np.ndarray) and indices.ndim == 2:  # Newer OpenCV versions
+        indices = indices.flatten()  # Flatten to 1D array if it's 2D
+
+    newBoxes = []
+    newConfi = []
     for i in indices:
-        i = i[0]
-        #box = boxes[i]
-        #left = box[0]
-        #top = box[1]
-        #width = box[2]
-        #height = box[3]
         newConfi.append(confidences[i])
         newBoxes.append(boxes[i])
 
-        # drawPred(classIds[i], confidences[i], left, top, left + width, top + height)
     return newBoxes, newConfi
 
 
