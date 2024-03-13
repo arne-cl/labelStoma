@@ -17,13 +17,22 @@ nmsThreshold = 0.45   #Non-maximum suppression threshold
 #inpHeight = 416      #Height of network's input image
 
 
-# Get the names of the output layers
 def getOutputsNames(net):
+    """Get the names of the output layers."""
     # Get the names of all the layers in the network
     layersNames = net.getLayerNames()
-    # Get the names of the output layers, i.e. the layers with unconnected outputs
-    return [layersNames[i[0] - 1] for i in net.getUnconnectedOutLayers()]
-
+    # Get the names of the output layers, i.e., the layers with unconnected outputs
+    outLayers = net.getUnconnectedOutLayers()
+    
+    # Check if the function returns a numpy array or a list (depends on OpenCV version)
+    if isinstance(outLayers, np.ndarray):
+        # If it's a numpy array (common in newer OpenCV versions), flatten it
+        outLayers = outLayers.flatten()
+    else:
+        # Otherwise (in older versions), it's a list of lists, so extract the first element
+        outLayers = [i[0] for i in outLayers]
+    
+    return [layersNames[i - 1] for i in outLayers]
 
 
 
