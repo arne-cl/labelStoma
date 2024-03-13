@@ -1,5 +1,33 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+"""
+The `labelSummary` module contains the PyQt5-based graphical user 
+interface of the LabelStoma application, designed for the detection of 
+stomata on leaf images. 
+
+The application supports basic image manipulation features like zooming 
+and scrolling, and advanced annotation features including drawing 
+shapes (rectangles, squares), editing, copying, and deleting 
+annotations.
+It also includes functionality to automatically detect 
+objects within images (specifically, stomata detection in this 
+context), generate Excel reports based on annotations, and prepare 
+training data for machine learning models.
+
+Key Features:
+
+- Load images individually or in bulk from a directory.
+- Support for Pascal VOC and YOLO annotation formats.
+- Drawing and editing of bounding boxes with support for square drawing mode.
+- Verification mode to mark images as verified for quality control.
+- Recent files menu for quick access to previously opened images or projects.
+- Predefined classes for quick annotation.
+- Automatic stoma detection using YOLO model
+- Excel report generation for analysis
+- Generation of training files for model training
+"""
+
 import codecs
 import os.path
 import platform
@@ -57,14 +85,15 @@ __appname__ = 'labelStoma'
 
 
 class WindowMixin(object):
-
     def menu(self, title, actions=None):
+        """Creates a menu in the menu bar with the given title and actions."""
         menu = self.menuBar().addMenu(title)
         if actions:
             addActions(menu, actions)
         return menu
 
     def toolbar(self, title, actions=None):
+        """Creates a toolbar in the application with the given title and actions."""
         toolbar = ToolBar(title)
         toolbar.setObjectName(u'%sToolBar' % title)
         toolbar.setOrientation(Qt.Vertical)
@@ -78,13 +107,12 @@ class WindowMixin(object):
 class MainWindow(QMainWindow, WindowMixin):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = list(range(3))
     shapeSize = None
+
     def __init__(self, defaultFilename=None, defaultPrefdefClassFile=None, defaultSaveDir=None):
+        """Initialize the main window, load settings, and set up UI components."""
         super(MainWindow, self).__init__()
         self.setWindowTitle(__appname__)
-        #QtGui.QMainWindow.__init__(self)
-        #self.show()
-        # Jonathan. Parámetros de configuración
-        # -----------------------------------------------------------------
+
         # Load setting in the main thread
         self.settings = Settings()
         self.settings.load()
@@ -581,16 +609,17 @@ class MainWindow(QMainWindow, WindowMixin):
             self.openDirDialog(dirpath=self.filePath)
 
     def keyReleaseEvent(self, event):
+        """Event handler for key release events, specifically to stop drawing squares when Ctrl is released."""
         if event.key() == Qt.Key_Control:
             self.canvas.setDrawingShapeToSquare(False)
 
     def keyPressEvent(self, event):
+        """Event handler for key press events, specifically to start drawing squares when Ctrl is pressed."""
         if event.key() == Qt.Key_Control:
-            # Draw rectangle if Ctrl is pressed
             self.canvas.setDrawingShapeToSquare(True)
 
-    ## Support Functions ##
     def set_format(self, save_format):
+        """Sets the format for saving label files (PascalVOC or YOLO)."""
         if save_format == FORMAT_PASCALVOC:
             self.actions.save_format.setText(FORMAT_PASCALVOC)
             self.actions.save_format.setIcon(newIcon("format_voc"))
@@ -606,15 +635,18 @@ class MainWindow(QMainWindow, WindowMixin):
             LabelFile.suffix = TXT_EXT
 
     def change_format(self):
+        """Changes the current format for saving label files between PascalVOC and YOLO."""
         if self.usingPascalVocFormat:
             self.set_format(FORMAT_YOLO)
         elif self.usingYoloFormat:
             self.set_format(FORMAT_PASCALVOC)
 
     def noShapes(self):
+        """Checks if there are no shapes (labels) present."""
         return not self.itemsToShapes
 
     def toggleAdvancedMode(self, value=True):
+        """Toggles the UI between beginner and advanced mode."""
         self._beginner = not value
         self.canvas.setEditing(True)
         self.populateModeActions()
@@ -627,6 +659,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
 
     def populateModeActions(self):
+        """Updates the UI actions based on the current mode (beginner or advanced)."""
         if self.beginner():
             tool, menu = self.actions.beginner, self.actions.beginnerContext
         else:
@@ -635,28 +668,28 @@ class MainWindow(QMainWindow, WindowMixin):
         addActions(self.tools, tool)
         self.canvas.menus[0].clear()
         addActions(self.canvas.menus[0], menu)
-        # self.menus.edit.clear()
-        # actions = (self.actions.create,) if self.beginner()\
-        #     else (self.actions.createMode, self.actions.editMode)
-        # addActions(self.menus.edit, actions + self.actions.editMenu)
 
     def setBeginner(self):
+        """Sets the UI to beginner mode."""
         self.tools.clear()
         addActions(self.tools, self.actions.beginner)
 
     def setAdvanced(self):
+        """Sets the UI to advanced mode."""
         self.tools.clear()
         addActions(self.tools, self.actions.advanced)
 
     def setDirty(self):
+        """Marks the current project as having unsaved changes."""
         self.dirty = True
         self.actions.save.setEnabled(False)
 
     def setClean(self):
+        """Marks the current project as having all changes saved."""
         self.dirty = False
         self.actions.save.setEnabled(False)
         self.actions.create.setEnabled(True)
-        # Jonathan. Hay que habilitar el botón de añadir región cuando se abre una imagen
+        # You need to enable the createRegion button when you open an image.
         self.actions.createRegion.setEnabled(True)
         self.actions.createScale.setEnabled(True)
         self.actions.detect.setEnabled(True)
@@ -664,19 +697,22 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.trainModel.setEnabled(True)
 
     def toggleActions(self, value=True):
-        """Enable/Disable widgets which depend on an opened image."""
+        """Enables or disables actions based on whether an image is loaded."""
         for z in self.actions.zoomActions:
             z.setEnabled(value)
         for action in self.actions.onLoadActive:
             action.setEnabled(value)
 
     def queueEvent(self, function):
+        """Queues an event (function call) to be executed."""
         QTimer.singleShot(0, function)
 
     def status(self, message, delay=5000):
+        """Displays a message in the status bar."""
         self.statusBar().showMessage(message, delay)
 
     def resetState(self):
+        """Resets the application state (e.g., clears shapes and selected files)."""
         self.itemsToShapes.clear()
         self.shapesToItems.clear()
         self.labelList.clear()
@@ -687,12 +723,14 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelCoordinates.clear()
 
     def currentItem(self):
+        """Returns the currently selected label item."""
         items = self.labelList.selectedItems()
         if items:
             return items[0]
         return None
 
     def addRecentFile(self, filePath):
+        """Adds a file to the list of recently opened files."""
         if filePath in self.recentFiles:
             self.recentFiles.remove(filePath)
         elif len(self.recentFiles) >= self.maxRecent:
@@ -700,12 +738,15 @@ class MainWindow(QMainWindow, WindowMixin):
         self.recentFiles.insert(0, filePath)
 
     def beginner(self):
+        """Checks if the application is in beginner mode."""
         return self._beginner
 
     def advanced(self):
+        """Checks if the application is in advanced mode."""
         return not self.beginner()
 
     def getAvailableScreencastViewer(self):
+        """Gets the available viewer for screencasts based on the operating system."""
         osName = platform.system()
 
         if osName == 'Windows':
@@ -715,18 +756,20 @@ class MainWindow(QMainWindow, WindowMixin):
         elif osName == 'Darwin':
             return ['open', '-a', 'Safari']
 
-    ## Callbacks ##
     def showTutorialDialog(self):
+        """Shows a dialog with the tutorial video."""
         subprocess.Popen(self.screencastViewer + [self.screencast])
 
     def showInfoDialog(self):
+        """Shows a dialog with application information."""
         msg = u'Name:{0} \nApp Version:{1} \n{2} '.format(__appname__, __version__, sys.version_info)
         QMessageBox.information(self, u'Information', msg)
 
-    # Jónathan. Importante.
-    # Definimos dos funciones, una para añadir regiones y otra para añadir estomas. La diferencia es el texto
-    # por defecto que fija cada una de ellas.
+
+    # We define two functions, one for adding regions and one for adding stomata.
+    # The difference is the default text that sets each of them.
     def createShape(self):
+        """Creates a new shape with a default label "stoma"."""
         assert self.beginner()
         self.text = 'stoma'
         self.canvas.setEditing(False)
@@ -735,8 +778,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.saveFile()
         print(self.canvas.shapes[0])
 
-
     def createShapeRegion(self):
+        """Creates a new shape with a default label "superficie" for regions."""
         assert self.beginner()
         self.text = 'superficie'
         self.canvas.setEditing(False)
@@ -745,15 +788,15 @@ class MainWindow(QMainWindow, WindowMixin):
         self.saveFile()
 
     def createShapeScale(self):
+        """Creates a new shape with a default label "scale" for scales."""
         assert self.beginner()
         self.text = 'scale'
         self.canvas.setEditing(False)
         self.actions.create.setEnabled(False)
         self.actions.createScale.setEnabled(False)
-        #una vez que hemos añadido la escala activamos la posibilidad de generar un excel
+        # Once we have added the scale, we activate the option to generate an Excel file.
         self.actions.excel.setEnabled(True)
         self.saveFile()
-
 
     def toggleDrawingSensitive(self, drawing=True):
         """In the middle of drawing, toggling between modes should be disabled."""
@@ -767,21 +810,25 @@ class MainWindow(QMainWindow, WindowMixin):
             self.actions.createRegion.setEnabled(True)
 
     def toggleDrawMode(self, edit=True):
+        """Toggles between create and edit mode for drawing shapes."""
         self.canvas.setEditing(edit)
         self.actions.createMode.setEnabled(edit)
         self.actions.editMode.setEnabled(not edit)
         self.saveFile()
 
     def setCreateMode(self):
+        """Sets the application to create mode for drawing new shapes."""
         assert self.advanced()
         self.toggleDrawMode(False)
 
     def setEditMode(self):
+        """Sets the application to edit mode for modifying existing shapes."""
         assert self.advanced()
         self.toggleDrawMode(True)
         self.labelSelectionChanged()
 
     def updateFileMenu(self):
+        """Updates the File menu, especially the recent files submenu."""
         currFilePath = self.filePath
 
         def exists(filename):
@@ -799,9 +846,11 @@ class MainWindow(QMainWindow, WindowMixin):
             menu.addAction(action)
 
     def popLabelListMenu(self, point):
+        """Shows the context menu for the label list."""
         self.menus.labelList.exec_(self.labelList.mapToGlobal(point))
 
     def editLabel(self):
+        """Opens a dialog to edit the currently selected label."""
         if not self.canvas.editing():
             return
         item = self.currentItem()
@@ -813,18 +862,16 @@ class MainWindow(QMainWindow, WindowMixin):
             item.setBackground(generateColorByText(text))
             self.setDirty()
 
-    # Tzutalin 20160906 : Add file list and dock to move faster
     def fileitemDoubleClicked(self, item=None):
+        """Loads an image when its filename is double-clicked from the file list."""
         currIndex = self.mImgList.index(ustr(item.text()))
         if currIndex < len(self.mImgList):
             filename = self.mImgList[currIndex]
             if filename:
                 self.loadFile(filename)
 
-    # Add chris
     def btnstate(self, item=None):
-        """ Function to handle difficult examples
-        Update on each object """
+        """"Handles the state change of the "difficult" checkbox for a selected label."""
         if not self.canvas.editing():
             return
 
@@ -850,6 +897,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     # React to canvas signals.
     def shapeSelectionChanged(self, selected=False):
+        """Handles changes in shape selection within the canvas."""
         if self._noSelectionSlot:
             self._noSelectionSlot = False
         else:
@@ -865,6 +913,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.shapeFillColor.setEnabled(selected)
 
     def addLabel(self, shape):
+        """Adds a label to the label list for a given shape."""
         shape.paintLabel = self.displayLabelOption.isChecked()
         item = HashableQListWidgetItem(shape.label)
         item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
@@ -877,8 +926,8 @@ class MainWindow(QMainWindow, WindowMixin):
             action.setEnabled(True)
 
     def remLabel(self, shape):
+        """Removes a label from the label list."""
         if shape is None:
-            # print('rm empty label')
             return
         item = self.shapesToItems[shape]
         self.labelList.takeItem(self.labelList.row(item))
@@ -886,6 +935,7 @@ class MainWindow(QMainWindow, WindowMixin):
         del self.itemsToShapes[item]
 
     def loadLabels(self, shapes):
+        """Loads labels (shapes) into the canvas."""
         s = []
         for label, points, line_color, fill_color, difficult in shapes:
             shape = Shape(label=label)
@@ -916,6 +966,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.loadShapes(s)
 
     def saveLabels(self, annotationFilePath):
+        """Saves the current labels (shapes) to a file."""
         annotationFilePath = ustr(annotationFilePath)
         if self.labelFile is None:
             self.labelFile = LabelFile()
@@ -952,20 +1003,22 @@ class MainWindow(QMainWindow, WindowMixin):
             return False
 
     def copySelectedShape(self):
+        """Copies the currently selected shape."""
         self.addLabel(self.canvas.copySelectedShape())
         # fix copy and delete
         self.shapeSelectionChanged(True)
 
     def labelSelectionChanged(self):
+        """Updates UI based on label selection changes in the label list."""
         item = self.currentItem()
         if item and self.canvas.editing():
             self._noSelectionSlot = True
             self.canvas.selectShape(self.itemsToShapes[item])
             shape = self.itemsToShapes[item]
-            # Add Chris
             self.diffcButton.setChecked(shape.difficult)
 
     def labelItemChanged(self, item):
+        """Handles changes to label items, such as text or visibility."""
         shape = self.itemsToShapes[item]
         label = item.text()
         if label != shape.label:
@@ -975,31 +1028,11 @@ class MainWindow(QMainWindow, WindowMixin):
         else:  # User probably changed item visibility
             self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
 
-    # Callback functions:
-    # Importante.
     def newShapeStoma(self, text='stoma'):
         """Pop-up and give focus to the label editor.
 
         position MUST be in global coordinates.
         """
-        # Jónathan.
-        # Estas líneas las he comentado yo.
-        # if not self.useDefaultLabelCheckbox.isChecked() or not self.defaultLabelTextLine.text():
-        #    if len(self.labelHist) > 0:
-        #        self.labelDialog = LabelDialog(
-        #            parent=self, listItem=self.labelHist)
-
-        # Sync single class mode from PR#106
-        #    if self.singleClassMode.isChecked() and self.lastLabel:
-        #        text = self.lastLabel
-        #    else:
-        #        text = self.labelDialog.popUp(text=self.prevLabelText)
-        #        self.lastLabel = text
-        # else:
-        #    text = self.defaultLabelTextLine.text()
-
-        # Add Chris
-        # self.diffcButton.setChecked(False)
         if text is not None:
             self.prevLabelText = text
             generate_color = generateColorByText(text)
@@ -1016,7 +1049,6 @@ class MainWindow(QMainWindow, WindowMixin):
             if text not in self.labelHist:
                 self.labelHist.append(text)
         else:
-            # self.canvas.undoLastLine()
             self.canvas.resetAllLines()
 
     # Importante.
@@ -1025,24 +1057,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
         position MUST be in global coordinates.
         """
-        # Jónathan.
-        # Estas líneas las he comentado yo.
-        # if not self.useDefaultLabelCheckbox.isChecked() or not self.defaultLabelTextLine.text():
-        #    if len(self.labelHist) > 0:
-        #        self.labelDialog = LabelDialog(
-        #            parent=self, listItem=self.labelHist)
-
-        # Sync single class mode from PR#106
-        #    if self.singleClassMode.isChecked() and self.lastLabel:
-        #        text = self.lastLabel
-        #    else:
-        #        text = self.labelDialog.popUp(text=self.prevLabelText)
-        #        self.lastLabel = text
-        # else:
-        #    text = self.defaultLabelTextLine.text()
-
-        # Add Chris
-        # self.diffcButton.setChecked(False)
         text = self.text
         if text is not None:
             self.prevLabelText = text
@@ -1060,7 +1074,6 @@ class MainWindow(QMainWindow, WindowMixin):
             if text not in self.labelHist:
                 self.labelHist.append(text)
         else:
-            # self.canvas.undoLastLine()
             self.canvas.resetAllLines()
 
     def scrollRequest(self, delta, orientation):
